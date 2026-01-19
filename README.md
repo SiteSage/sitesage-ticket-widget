@@ -4,15 +4,111 @@ SiteSage is an application that enhances ticket systems with certain AI features
 
 Enhancing is done via webhook that listens in on the incoming requests, and performs actions via the ticket system API. As part of this, a reply suggestion is also generated, which is later available through the app.
 
-The app is injected into the ticket system, this is usually the hard part.
+Ideally the app should be available as a widget within the ticket system. It needs to be injected as an iframe and communication between the ticket system platform and SiteSage app usually happen via `postMessages`.
 
-Ideally the app should be available as a widget within the ticket system. It needs to be injected as an iframe and communication between the ticket system platform and SiteSage app usually happen via `postMessages` .
+See the [Getting started](#getting-started-with-sitesage) section for easily managing this with the `SiteSage Web Component`.
 
 ## Widget Installation Parameters
 
 - api_token: string
 - app_url: string
 - backend_url: string
+
+## Getting started with SiteSage
+
+If you're looking for an easy way to integrate SiteSage into your ticket system the `sitesage ticket script` is a light weight script that exposes a `sitesage-widget` Web Component to handle the messaging to and from the SiteSage iframe.
+
+Below is a minimal example.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script type="module" src="./dist/sitesagejs.iife.js"></script>
+</head>
+<body>
+    <div class="sitesage-container">
+        <sitesage-widget
+            app_url="install-param-app_url"
+            backend_url="install-param_backend_url"
+        />
+    </div>
+</body>
+</html>
+
+
+<script>
+
+    window.addEventListener("DOMContentLoaded", () => {
+
+        const sitesage = document.querySelector("sitesage-widget");
+
+		// Update the app language and agent name. Role *must* be 'agent'.
+        sitesage.attributes.user.value = JSON.stringify({role: "agent", name: "John Doe", language: "da-DK"});
+		// Let the app know about the current ticket. It is not required to reload the app when navigating to a new ticket. Simply update this value.
+        sitesage.attributes.ticket.value = JSON.stringify({message_id: 123, conversation_id: 456});
+
+		// Insert text into the ticket area. Specific to your ticket system.
+        sitesage.addEventListener("texteditor:insert", (event) => {
+            console.log("texteditor insert", event.detail.text);
+        });
+
+		// To avoid exposing the customer API key, please wrap network requests in a proxy on the server.
+        sitesage.addEventListener("proxy:request", async (event) => {
+            const {request, respondWith, error} = event.detail;
+            try {
+                const data = await server_side_proxy(request);
+                const response = new Response(JSON.stringify(await data.json()), {
+                    status: data.status,
+                    headers: new Headers(data.headers),
+                });
+                respondWith(response); // expexts a regular response object.
+            }catch(e) {
+                console.warn(e);
+                error("Proxy Failure");
+            }
+        })
+    });
+
+    /**
+     * This code should not run on the client side as it contains secrets.
+     * It is only here to show how to handle the proxy request and serves as an example.
+     */
+    function server_side_proxy(request) {
+        const SECRET_KEY_FROM_SERVER = "customer-sitesage-api-key";
+
+		// SiteSage sends the Authorization Header in mustache template format: `Authorization Bearer {{sitesage_api_key}}`
+		// replace the value of {{sitesage_api_key}} with the customer secret api key from installation parameter.
+        const secureHeaders = request.headers.map(([key, value]) => {
+            return [key, value.replace('{{sitesage-api-key}}', SECRET_KEY_FROM_SERVER)];
+        });
+        
+        return fetch(request.url, {
+            method: request.method,
+            headers: secureHeaders,
+            body: request.body,
+        });
+    }
+
+
+
+</script>
+
+
+<style>
+    .sitesage-container {
+        width: 600px;
+        height: 320px;
+    }
+</style>
+```
+
+# Low-Level Message Types
+
+If you are using the SiteSage Web Component there is no need to implement the following directly.
 
 ## Message Events
 
@@ -46,7 +142,6 @@ headers: {
 type:  "TEXT_EDITOR_INSERT",
 content: string
 ```
-
 
 ### Messages to SiteSage Iframe
 
@@ -125,16 +220,3 @@ window.addEventListener("message", async (event) => {
 	}
 ```
 
-## Getting started with SiteSage
-
-If you're looking for an easy way to integrate SiteSage into your ticket system the `sitesage ticket script` is a light weight script that exposes a single helper class to handle the messaging to and from the SiteSage iframe.
-
-```html
-// coming soon
-<script src="..."></script> 
-<script>
-	const iframe = document.getElementById("{the-sitesage-iframe}")
-	SiteSage.init(iframe);
-	SiteSage.load(data);
-</script>
-```
