@@ -47,9 +47,9 @@ Below is a minimal example.
         const sitesage = document.querySelector("sitesage-widget");
 
 		// Update the app language and agent name. Role *must* be 'agent'.
-        sitesage.attributes.user.value = JSON.stringify({role: "agent", name: "John Doe", language: "da-DK"});
+        sitesage.user = {role: "agent", name: "John Doe", language: "da-DK"};
 		// Let the app know about the current ticket. It is not required to reload the app when navigating to a new ticket. Simply update this value.
-        sitesage.attributes.ticket.value = JSON.stringify({message_id: 123, conversation_id: 456});
+        sitesage.ticket = {message_id: 123, conversation_id: 456};
 
 		// Insert text into the ticket area. Specific to your ticket system.
         sitesage.addEventListener("texteditor:insert", (event) => {
