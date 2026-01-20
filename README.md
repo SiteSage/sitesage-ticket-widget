@@ -83,7 +83,7 @@ Below is a minimal example.
 		// SiteSage sends the Authorization Header in mustache template format: `Authorization Bearer {{sitesage_api_key}}`
 		// replace the value of {{sitesage_api_key}} with the customer secret api key from installation parameter.
         const secureHeaders = request.headers.map(([key, value]) => {
-            return [key, value.replace('{{sitesage-api-key}}', SECRET_KEY_FROM_SERVER)];
+            return [key, value.replace('{{sitesage_api_key}}', SECRET_KEY_FROM_SERVER)];
         });
         
         return fetch(request.url, {
